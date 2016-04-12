@@ -1,0 +1,1063 @@
+Powershell
+==========
+* Run a process(e.g., powershell) as administrator:
+	Start-Process powershell -Verb runAs
+
+* Powershell string pipe searching example:
+	sd clients | Select-String $env:username
+
+* To get the bios info from command prompt:
+	systeminfo (Admin access shouldn't be required)
+
+Randoms
+=======
+* DZ : In computer security, a DMZ or demilitarized zone (sometimes referred to as a perimeter network) is a physical or logical 
+  subnetwork that contains and exposes an organization's external-facing services to a larger and untrusted network, usually the 
+  Internet. The purpose of a DMZ is to add an additional layer of security to an organization's local area network (LAN); an external 
+  attacker only has direct access to equipment in the DMZ, rather than any other part of the network. The name is derived from the term 
+  "demilitarized zone", an area between nation states in which military operation is not permitted.
+
+Perforce/Source Depot
+=====================
+* lcs instead of sd for submit:
+  Use 'lcs sumbit' instead of 'sd submit' -- the later sends email to a large number of people
+* 'shelve' is the perforce counterpart of git stash
+
+Working with VM
+===============
+Both the Snooper.exe and OCSLoger.exe can be found in the C:\WPP dir of the VMs. Use these for analyzing logs.
+The OneNote doc claims, there is an updated OSLoger.exe in  \\192.168.0.240\C$\RTC_Srv_BVTs\Support\ocslogger.exe.
+However, that network dir requires authentication that I do not have.
+
+
+
+VM based deployment
+===================
+- Command: RunUCTest.cmd /RunTests /Tests:+Suite=Null /UseVMTopology /Topology:EEPool_AP_BV /LeaveVMsRunning /UseExistingTopology
+  
+  If you do not use the /UseExistingTopology param you are gonna destroy the 'already deployed VMs', if exist already. And you are  
+  stuck with a 8 hours long deployment process.
+
+  After deploying the EEPool_AP_BV topology, we will see 5 VMs in the Hyper-V terminal - Access Proxy, Client, DC, Kraken and Server.
+  The 'Edge Server' resides in the Access Proxy VM (The naming is pretty confusing. A edge server supposed to incorporate the following --
+  Access Proxy(AP):proxy for sip traffic , Media Relay:Proxy for media traffic, when p2p fails I guess, Data Proxy(DP):proxy for data traffic. 
+  AP should be a member of Edge Server. It shouldn't be able to hold the whole 'Edge Server'.) The 'Active Directory' is placed in the DC(Domain Controller) VM. 
+  Client is what the name implies. Server can( and does) encapsulate Registrar, Focus (conference handling solution?), MCU (Multipoint Control Unit) Factory, 
+  Presence, conferenceing/focus related storage/DB, Back Ends servers, Mediation Server (really?), PSTN-SIP gaetway (really?).
+
+  We should keep in mind that the VM based deployment doesn't follow an ideal deployment strategy. The practical solution is more modular -- especially, it 
+  doesn't dump everything in a single 'Server' entity (at least, that's what I think).
+
+MDS Runner
+============
+Runner Service Management Pannel:
+	https://test1.diagnostics.monitoring.core.windows.net/content/runnerservice/runnerservice.html 
+Getting started with MDS Runner:
+	https://microsoft.sharepoint.com/teams/SkypeAzure/SitePages/Getting%20Started%20with%20MDS%20Runners.aspx
+
+
+
+THINGS TO LEARN
+===============
+1. Powershell cmdlets : ST (Synthetic Transaction uses this for onprem)
+2. Powershell scripts: 
+3. How it loads lync modules using a custom manifest? A sample?
+Note: To call the cmdlets the powershell script must load the custom manifest.
+
+
+The idea here is simple -- MDS runners calling cmdlets. The benefit is, we have Smart Alert integrated in powershell which can be used for sending alerms.
+It seems there is an existing framework for doing that (done by RTMA team). Smart Alert v2.0 is supposed to be available in WCF. If so, I don't prefer to
+use powershell. WCF APIs can be used directly from the C# runners -- cmdlets will be needless then.
+
+
+Hari's SmartAlert Link:
+======================
+https://microsoft.sharepoint.com/teams/SkypeMA/_layouts/15/start.aspx#/SitePages/DEVELOPER%20CENTER.aspx
+
+BVI OneNote
+===========
+http://livecommteam/sites/main/servers/service/team/_layouts/WopiFrame.aspx?sourcedoc=%2Fsites%2Fmain%2Fservers%2Fservice%2Fteam%2FShared%20Documents%2FBusiness%20Voice%20Directory%2FBusinessVoiceDirectory&action=edit&wd=target%28%2FReferences.one%7Cc783ab9a-d0f7-4635-bf3d-21eb514c51bb%2FBusiness%20Voice%20Directory%20References%7C518e7b24-bf26-435b-b0e4-96b74d3ddd96%2F%29
+
+MDS an other bindaries
+======================
+\\reddog\builds\branches\rd_fun_stable_latest_amd64fre\bin\Monitoring\mds\tools
+
+
+Upload and Deploy MDS Runner
+=============================
+PS C:\MDS\red_dog builds\mds\tools> .\mds.exe runnersvc http://test1.diagnostics.monitoring.core.windows.net -command:up
+loadpackage -runnername:MinimalRunnerSample -area:Test -sourcedir:F:\Debug
+New scratchDirectory file name is ScratchDir576579d1-75d4-4f3f-97ee-f2b33726e3bc
+C:\MDS\red_dog builds\mds\tools\cabarc.exe
+Successfully uploaded blob to Runnergroup:defaultcontainer PackageId:runnerserviced23b5pkg-127, Instrumentation:time spe
+nt in decoding package: 00:00:00.1406291
+time spent in uploading the package: 00:00:02.3124628
+
+PS C:\MDS\red_dog builds\mds\tools> .\mds.exe runnersvc http://test1.diagnostics.monitoring.core.windows.net -command:de
+ployorupdate -runnername:MinimalRunnerSample -area:Test -packageid:runnerserviced23b5pkg-127
+Successfully sent update command for Runner : MinimalRunnerSample Area : Test Location: runnerbvtco2stage
+ CommandId:556b3292-5383-487a-9e3b-02a820aa3100
+
+
+SmartAlert Deployment
+=====================
+It's basically nothing but writing and XML configuration file and uploading it.
+Followings are the relevant commands that we will need:
+1. Get the list of all AIM configuration files/rule-files:
+mds config  https://test1.diagnostics.monitoring.core.windows.net -configkind:aimsruleconfig -command:list 
+2. Upload your config/rule file:
+PS C:\MDS\red_dog builds\mds\tools> .\mds.exe config  https://test1.diagnostics.monitoring.core.windows.net -configkind:
+aimsruleconfig -command:upload -configfile:F:\Debug\AimBvdRunner.xml
+3. Delete your config file:
+PS C:\MDS\red_dog builds\mds\tools> .\mds.exe config  https://test1.diagnostics.monitoring.core.windows.net -configkind:
+aimsruleconfig -command:delete -configid:AimBvdRunner
+4. Get info about your config file:
+PS C:\MDS\red_dog builds\mds\tools> .\mds.exe config  https://test1.diagnostics.monitoring.core.windows.net -configkind:
+aimsruleconfig -command:listone -includecontent -configid:AimBvdRunner
+
+
+SmartAlert registration link:
+=============================
+[1/27/2015 3:05 PM] Krishna Kurapati: 
+http://osp.outlook.com/
+[1/27/2015 3:06 PM] Krishna Kurapati: 
+https://osp.outlook.com/
+[1/27/2015 3:07 PM] Hari Srinivasan: 
+you can also check https://osp.office.net
+[1/27/2015 3:21 PM] Hari Srinivasan: 
+http://aka.ms/sbsdevops
+
+Team already registered to SmartAlert:
+======================================
+Skype Business Voice Champs Team
+
+Adam's link about Skype Data RV
+===============================
+https://microsoft.sharepoint.com/teams/Skype_Business_Voice_Vancouver/_layouts/15/WopiFrame.aspx?sourcedoc={ece9d1c2-ed4b-4076-8a29-880fb9d3c567}&action=edit&wd=target%28AVS%2FAzure%2FSkypeDataRV%20Research%2Eone%7C03DDBD10%2D5BF4%2D4EEB%2D948A%2DE5790A6B6F21%2F%29
+
+
+TEAM : Skype Business Voice Champs
+==================================
+Skype Business Voice Champs Team (skybvchamps@microsoft.com)
+
+
+
+
+
+
+====================
+MDM
+====================
+e:\tfs\skype\ev\bvd\cbd\cbdservice.frontend\monitoring\mdsmaconfigtemplate.xml
+
+
+1. Change the required files in TFS
+2. Instead of commiting, make a shelfset
+3. Builds->Main.Gated->Queue new Build
+4. The new build will be shown under "My Builds". Pass the info and the certificate to Guanan. He will take care of the deployment.
+
+Location of .csdef in TFS: EV\Main\BVD\CBD\CBDService\ServiceDefinition.csdef
+
+
+
+Certificate:
+-Install .cert into local machine
+- run 'mmc' in Admin mode
+- File->Add/Remove snap in-> (Certificate->Add)->Local Machine
+- Export it as .pfx
+Thumbprint: ?a6e9727aba39430e6b7594fa3c3e26e2f98dc4ff
+
+
+namespaces used:
+	skypeBvdIntCounters
+	skypeBvdIntCustomCounters
+
+folder for the shelveset build: \\lcsrel\Prerelease\Tfsbuild\ECVS
+Sheleveset: DemoMdmChages
+
+
+TFS Build Server Info:
+======================
+[2/20/2015 3:51 PM] Ankur Goyal: 
+computername : ecvs-bld.redmond.corp.microsoft.com
+[2/20/2015 3:51 PM] Ankur Goyal: 
+password : 17Apples (now: 18Apples)
+[2/20/2015 3:51 PM] Ankur Goyal: 
+redmond\ecvsi
+[2/20/2015 3:51 PM] Ankur Goyal: 
+this is user
+
+
+Azure Deployment
+================
+ https://manage.windowsazure.com/
+- go to 'cloud services' and click the instance
+- setup/configure RDP (go to configure)
+- Go to instances and connect
+
+MdsMaConfig.xml
+===============
+C:\Resources\Directory\f4c4e64a52d44bc69867a94685907b7f.CBDService.FrontEnd.MonitoringDataStore\Package\Agent\Commit\initconfig\2.0\Standard
+
+MDS document
+================
+https://microsoft.sharepoint.com/teams/SPS-AzMon/Shared%20Documents/Documentation/MDS%20Quick%20Start%20Guide.docx
+C:\Resources\Directory\2b021d6966aa4b8db7a8db5e39e4574f.CBDService.FrontEnd.MonitoringDataStore\Tables
+
+
+Additional Access to Skype Teams:
+=======================================
+Go to http://ramweb
+Here are few project codes:
+1.       146 – WTT
+2.       12406
+3.       13630
+4.       12400
+5.       12527
+6.       12490
+7.       12481
+8.       11885
+9.       16960
+
+Check https://microsoft.sharepoint.com/teams/SkypeAzure/Deploy/_layouts/15/WopiFrame.aspx?sourcedoc={7ab6986f-cecd-403c-a06a-dd803b38d1f3}&action=edit&wd=target%28Onboarding%20Quick%20Start%2Eone%7CD7A9624B%2DC112%2D4CE3%2DB811%2D605F7A678E4A%2FRAMWeb%20Permissions%7C53ABF32A%2D25DE%2D46F0%2DA9BD%2D4AE13869BF38%2F%29
+for more.
+
+
+MDS package:
+============
+/common/Build/Templates/mds.targets
+
+Monitoring Agent HeartBeat
+==========================
+- Related table for INT: SkypeBvdIntMaHeartBeatVer1v0
+- Statemap table: MdsHeartBeatStateMapTable
+- Config file name should be: SkypeBvdIntMAHealthAlert
+
+
+Ask Manuel About it:
+=====================
+Application Insight -- Manuel
+
+Open HeartBeat JIRA item for TNM
+
+
+Enlistment
+==========
+lcscaa -> CAA (Conference Auto Attendance)
+lcscpcp -> focus-light/lite changes happen here
+lcsbv --> parent of lcscpcp and lcscaa
+
+//depot/lcs/main/... //asbabu_lcsbv/...
+-//depot/lcs/main/developer/... //asbabu_lcsbv/developer/...
+//depot/lcs/main/developer/* //asbabu_lcsbv/developer/*
+//depot/lcs/main/developer/asbabu/... //asbabu_lcsbv/developer/asbabu/...
+//depot/lcs/main/src/... //asbabu_lcsbv/main/...
+-//depot/lcs/main/src/__intl/... //asbabu_lcsbv/main/__intl/...
+//depot/lcs/private/lcsbv/src/... //asbabu_lcsbv/bv/...
+-//depot/lcs/private/lcsbv/src/__intl/... //asbabu_lcsbv/bv/__intl/...
+
+
+Razzle build:
+=============
+set AUTO_DEP=1 (auto dependency)
+bcz /c
+
+Additional Storage Accounts (MDS):
+==================================
+For int environment:
+	int00cusmdsaudit01 ; Access Key (primary): HZxrwLxLOnaESTMgXWP+kN887/gi9UruWdH3U9DxektJW0oRmpv7q/RF3p6KvcQNhmhXPSBAVM7Cxqi0FJMLCg==
+	int00cusmdsscrty01 ; Access Key (primary): lWrLXPfD2dNT19HsFTvuHfFZbYr+LIz8GBDWITzvbmq5MyIy9vJ5xddFNckpFvmPxCgNqsbZ6qkC/IK99xfWvg==
+
+SD Tools
+========
+Use Janus
+
+
+The problem 
+============
+Large numbers of .dll files "could not be found" when attempting to run bcz command 
+
+The fix 
+========
+This is caused by Visual Studio obtaining and not releasing a lock on the file "microsoft.rtc.collaboration.xml" located in the 
+obj\lcs_w15_onpremhf.obj.amd64chk\src\dev\server\ucma\core\dll\objchk\amd64\ directory. This is very frustrating to debug, as no 
+locking handle can be found on this file. Simply close all Visual Studio instances and rerun the bcz command to fix this.
+
+
+How to check using SD:
+======================
+sd sync ...
+sd resolve
+sd submit -c <changeListNumber>
+
+ServiceRegistry
+================
+Contact Person -- Cindy Zou
+Conversation:
+you will need to do some configurations for negut sources. can run the script as indicated in this doc, or manually add the sources through visual studio:
+https://confluence.skype.net/display/BUILDSYSTEMS/Nexus+Nuget+configuration
+I think this is the one where sr client is in: Skype_Nuget
+let me know if you already have it added to your package sources
+
+The following Nuget repository needs to be integrated for the ServiceRegistry client:
+<add key="Skype_Nuget" value="https://nexus.skype.net/service/local/nuget/skype-nuget" />
+
+Service Registry changes
+==========================
+    using Microsoft.Skype.ServiceRegistry.Client;
+
+	WorkerRole::OnStart()
+	// Initialize the service registry client
+            ServiceRegistryHandler.InitializeClient();
+			
+	WebRole::InitializeWebRole()
+	// Initialize the service registry client
+            ServiceRegistryHandler.InitializeClient();
+			
+			
+
+The traceLog MDS table
+=======================
+SkypeBvdIntTraceLogsNOAMVer1v0
+
+Assembly Binding Redirect
+=========================
+https://msdn.microsoft.com/en-us/library/7wd6ex19%28v=vs.110%29.aspx
+
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-6.0.0.0" newVersion="6.0.0.0" />
+      </dependentAssembly>
+	  <dependentAssembly>
+        <assemblyIdentity name="Microsoft.WindowsAzure.ServiceRuntime" publicKeyToken="31BF3856AD364E35" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-2.4.0.0" newVersion="2.4.0.0" />
+       </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
+
+
+
+COSMOS
+ScopeStudio:
+=============
+
+Cosmos discussion with Balinder
+===============================
+[?5/?29/?2015 4:26 PM] Balinder Malhi: 
+ConfStart
+AvMcu bootstrap
+[?5/?29/?2015 4:27 PM] Balinder Malhi: 
+User/Focus- Join
+JoinMcu
+[?5/?29/?2015 4:29 PM] Balinder Malhi: 
+LeaveMcu
+[?5/?29/?2015 4:36 PM] Balinder Malhi: 
+Per conf -- ConfStart, AvMcu bootstrap, AcpJoin, ConfEnd
+Per PSTN user -- FocusJoin, McuJoin, McuLeave
+interesting events -- no PSTN user-left, ...
+[?5/?29/?2015 4:40 PM] Balinder Malhi: 
+Standard Cosmos info -- http://aka.ms/cosmos
+LyO cosmos clusters and access to them --
+
+
+MediationServer Trouble
+========================
+Mediation server is not sending the QoE report, because the Monitoring Server was not running on the topology.
+
+GatewayCall.cs: InnerDispose(...)
+Seems like the gateway call was in shutdown mode.
+
+MediationCall::CreateInviteWithReplacesProxyCall
+------------------------------------------------
+|
+GatewayCall::InnerDispose
+-------------------------
+if (m_shutDown == false)
+                    {
+                        // Do Collection remove first - if we recevie invite with replaces, we will look
+                        // for exisiting MediationCall in call collection.
+                        if (m_guid != null)
+                        {
+                            m_mediationCallCollection.Remove(m_guid);
+                        }
+
+                        m_shutDown = true;
+                    }
+|
+MediationCall::public void Terminate(MsDiagnosticsResponse proxyResponseCode, MsDiagnosticsResponse gatewayResponseCode)
+------------------------------------------------------------------------------------------------------------------------
+This code block is making m_shutDown = true:
+if (m_shutDown == false)
+                    {
+                        // Do Collection remove first - if we recevie invite with replaces, we will look
+                        // for exisiting MediationCall in call collection.
+                        if (m_guid != null)
+                        {
+                            m_mediationCallCollection.Remove(m_guid);
+                        }
+
+                        m_shutDown = true;
+                    }
+
+
+Verify FocuListe Tech CDR changes:
+==================================
+
+1.	Deploy EEPool_AP_BV VM topology with your build (takes a loooong time)
+2.	Enable SipMessage logs in Client VM
+	a.	Log onto Client VM (this is where CloudPstnConfSvc runs)
+	b.	Create SipMessage folder on client VM and make sure “Everyone” has full perms to it
+		C:\ProgramData\Microsoft\Lync Server\BIReportData\SipMessage
+	c.	Restart CloudPstnConf svc
+3.	RunTests FocusLite functional tests
+	a.	Log onto Server VM
+	b.	M:
+	c.	cd test\tools
+	d.	RunUCTest.cmd /RunTests  /Tests:Suite=cpcfocuslitefunctionals /Config:EEPool_AP_BV.Server
+4.	Verify SipMessages logs
+	a.	Log onto Client VM
+	b.	Check the log-files written under this folder (pick the one with most data) to make sure you are seeing the endpoint entity in the log file
+		C:\ProgramData\Microsoft\Lync Server\BIReportData\SipMessage
+		
+    For the UdcAgent changes, we need to run the test suite in the Server VM. The SipMessage folder needs to be created there, of course. 
+	For the EEPool_AP_BV_MultiForest topology, the path is: D:\ProgramData\Microsoft\Lync Server\BIReportData\SipMessage.
+	Before running the UcTest, do the followings in an admin command prompt:
+		import-module skypeforbusinessonline
+		set-cscdrconfiguration -DataStore Cloud -MessageTypes "All" 
+	
+	For the EEPool_AP_BV_MultiForest topology, run the following command in a command prompt of VFConfServer VM:
+		RunUCTest.cmd /RunTests  /Tests:Suite=cpcfocuslitefunctionals /Config:eepool_ap_bv_multiforest.vfconfserver 
+		
+	* UdcAgent.exe runs under RtcHost.exe
+		
+		
+Map a shared folder to a drive:
+===============================
+net use:
+net use M: \\192.168.0.242\... (ath_to_the_shared_folder)
+or
+net use M: \\192......\vm\rtcbuild\lcs.88.1\test\tools 
+
+Similarly, use pushd from cmdprompt to access a shared folder directly. Use popd to get out of it.
+	
+
+		
+Existing PstnConference CDR events
+==================================
+1. DispatchConfActivatedEvent :  	
+	(a) INVITE has been received by S4 from CAA
+	(b) ------------------------ by ACP-SDK (FocusLite) from ACPMCU
+	
+FocusLite -- pending events to write
+====================================
+1. Error events: CER 
+
+CAA Events to Write
+===================
+
+
+
+SDP Commands
+============
+Create dpk: sdp pack <dpkFileName> -c <changeListNumber>
+Extract dpk package: sdp -w diff *.dpk
+
+Apply dpk package to local: sdp apply -l *.dpk
+							sdp apply F:\MyZone\x.dpk -m //depot/lcs/private/rtma/... //depot/lcs/private/cpcp/...
+
+
+UdcAgent header (tenant Id)
+============================
+finalResponse.AllHeaders.FindFirst().ValueNoParameters
+
+UdcAgent Changes 
+================
+Under UdcAgent : CommonDataCollection.cs
+D:\dir_lcscpcp\cpcp\dev\server\lcs\server\datacollection
+
+private bool WriteSipMessage(LyncMessageHeader hd, LyncMessageDetails detail) : UdcLib\EventHandlerPersist.cs
+
+
+Scrub the passcode in ConferenceUri and McuUri
+==============================================
+
+
+Test Suits needed for UdcAgent changes
+======================================
+[?6/?16/?2015 3:16 PM] Gang Li (MBD): 
+cdrlegacyadaptorconftests cdrlegacyadaptorp2ptests 
+sessionadaptertests
+udcagenttests
+udcbvttests
+ 
+those are existing runs in rtma branch for daily BVT. 
+you should do some manual test for your new feature too. 
+
+
+UdcAgent Notes
+================
+1. UdcAgent collects not only CDR data but also QoE and Registrar data
+2. Processor.cs : can think of as the starting point
+3. Delegates used to pass correct number of ProcessRequest or ProcessResponse fucntions
+4. CommonDataCollection applies to all
+
+LyncMessageDetails is used by other components like Archiving, Converstaion history, session apapter etc, change its schema had bigger impact, and needs much more testing. 
+Also this class will be serialized to xml, string in Route should be escaped for special characters. 
+Since those headers only be used by UdcAgent-Lite, It'll easy to add another Dictionary<string,string> memeber to ProcessContext class, and add captured Route and Ms.. header data there. then you can pass this dictionary to EvenHandlerPersist class in ProcessContext.WriteToStorage method.
+This give you flexibility to capture more headers if later and avoid changing existing data schemas.
+
+
+Balinder -- New tasks:
+=======================
+[?7/?2/?2015 2:53 PM] Balinder Malhi: 
+FL Code changes:
+1) Add conf-id guid to all FL events
+Immediate changes to CPC Usage Cosmos queries for bvhealth:
+1) Add code to find number of conferences with atleast one PSTN user
+[?7/?2/?2015 2:54 PM] Balinder Malhi: 
+2) Fix logic for calculating PSTN minutes where we are currently not accounting for calls that don't have a LeaveMcu
+3) Fix how we correlated JoinMcu and LeaveMcu... instead of using the time based sorting of what we do today, use the endpoint-id that was added sometime back
+
+CDR reliability error
+=====================
+Method.Contains("service");
+DiagId --> range
+[?7/?8/?2015 4:27 PM] Balinder Malhi: 
+// CloudPstnConfSvc: 41000 - 41999
+rf_fls_cers = SELECT * FROM result_all 
+     WHERE 
+        //((MessageTypes & 1024) != 0)
+        MsDiagId >= 41000
+        AND MsDiagId < 42000
+     ORDER BY RequestTime ASC;
+	 
+How to verify UdcAgent changes:
+===============================
+[?7/?9/?2015 1:49 PM] Gang Li (MBD): 
+run get-cscdrconfiguration, check DataStore is set to Cloud. 
+[?7/?9/?2015 1:51 PM] Asad Babu: 
+this command does not give the DataStore information
+[?7/?9/?2015 1:51 PM] Gang Li (MBD): 
+import-module skypeforbusinessonline
+then run again.
+[?7/?9/?2015 1:52 PM] Asad Babu: 
+ok
+it's showing: DataStore=Database
+[?7/?9/?2015 1:53 PM] Gang Li (MBD): 
+set-cscdrconfiguration -DataStore=Cloud -MessageTypes "All" 
+run this, and wait for about half seconds. 
+[?7/?9/?2015 1:53 PM] Asad Babu: 
+okay
+[?7/?9/?2015 1:53 PM] Gang Li (MBD): 
+mins
+[?7/?9/?2015 1:56 PM] Asad Babu: 
+hmm, powershell says no parameter matches 'DataStore=Cloud'
+is the command format right?
+[?7/?9/?2015 1:57 PM] Gang Li (MBD): 
+oh, -DataStore Cloud
+[?7/?9/?2015 1:57 PM] Asad Babu: 
+ok
+[?7/?9/?2015 1:58 PM] Asad Babu: 
+great, worked .... so now I should wait for a minute or so and run the uctest
+[?7/?9/?2015 1:58 PM] Gang Li (MBD): 
+yes
+[?7/?9/?2015 1:58 PM] Asad Babu: 
+do I need to restart any service?
+[?7/?9/?2015 1:59 PM] Gang Li (MBD): 
+no
+
+
+SCOPE script naming convention
+==============================
+[?7/?10/?2015 2:50 PM] Kexia Tang: 
+thanks
+in short, this is the convention:
+Script output naming convention is: 
+OutputPath\ENV-cddX-TYPE-FROM_TIME-TO_TIME-GUID.ss  
+Where: 
+ENV = the target environment, e.g. prod, int, msit 
+X = target BV Health DB report type. Typically 0 (Hourly), but there may be rare cases where you need to output to Daily (=1) 
+TYPE = the stream type, must match the constant you previously added to StreamTypes.cs 
+FROM_TIME and TO_TIME are start and end dates formatted as yyMMddHH .  
+GUID - new GUID to make sure name is unique in the output directory. 
+The TO_TIME, TYPE and X are needed by common importer and scheduler in order to determine where to import the stream and how to schedule next job instance when time comes.  
+
+
+OCSLogger
+=========
+VM Trace Logs
+===============
+Here we will use the server VM.
+1. Stop the Centralized Logging Service Agent service.
+2. CD M:\Dev\Server\Tracing
+3. Run the OCSLogger.exe 
+4. Select your component and select all flags.
+5. Start logging.
+6. Run your UcTest.
+7. Stop Logging.
+8. Analyze.
+
+CALEA
+======
+Users.EncryptedUserPrincipalName  (For join, use PrimaryUserAddress)
+ADUser.encryptedUserPrincipalName  (do join ON onlinePrimaryUserAddress == UserUri)
+
+ConferenceMediaSessions --> view for Focus calls 
+(or should we use ConferenceSessionDetails? : interesting property: IsStartedByConfServer)
+
+P2PSessions --> Dailiy run of P2PSessionsDetails
+
+VASIL
+======
+[?8/?20/?2015 2:22 PM] Vasil Kolev: 
+the Organizer GUID in PstnConference is ObjectId in Users.view. 
+[?8/?20/?2015 2:22 PM] Asad Babu: 
+what is the key to join .. any idea?\
+[?8/?20/?2015 2:22 PM] Vasil Kolev: 
+but it's not exactly Guid.ToString
+one second
+[?8/?20/?2015 2:24 PM] Vasil Kolev: 
+public static string GuidToObjectId(string guidStr)
+    {
+        Guid guid;
+        if( ! Guid.TryParse(guidStr, out guid))
+            return guidStr;
+        StringBuilder result = new StringBuilder(32);
+        foreach( var b in guid.ToByteArray())
+        {
+            result.AppendFormat("{0:x2}", b);
+        }
+        return result.ToString();
+    }
+so - you take the OranizerGuid from pstn conf, run it through this method, then join with AdUserFull.view on ObjectId
+
+[?8/?20/?2015 2:26 PM] Vasil Kolev: 
+but - i don't know if you can turn any UserUri from pstn conf. Probably it's phone uri, so you may be able to find it somewhere in users view's properties. BTW Alexei was also trying to find a way to find user's phone, i can ask him if he found a way
+[?8/?20/?2015 2:28 PM] Asad Babu: 
+that would be great .... I will also investigating, first I want to write the basic script first
+thanks, Vasil
+[?8/?20/?2015 2:29 PM] Vasil Kolev: 
+or - you can just ask LyncAnalytics DL, there are people who might know
+
+
+Safe / Unsafe PII param:
+========================
+<PiiInfo safety="Unsafe">
+               <SafeParameters>
+                 <Parameter key="cpcConferenceUri" />
+              </SafeParameters>
+            </PiiInfo>
+			
+CDR TODO:
+=========
+1. MediaType needed
+2. Fire LeaveConf like JoinCOnf
+3. Use NoUserLeft
+
+In Scope menu in VS, select Job view, use this URL  https://cosmos11.osdinfra.net/cosmos/lynconline.adhoc/_Jobs/5afc5185-3b44-49f0-8a05-a3918e63b539
+
+Kexia Hashed sipuri
+===================
+<PII:H101(xTR2Q5bGRYfYeDXXEsmezhZ27cLOWlcNTn4Ol9mnpOo=)>@microsoft.com
+Kexia cellphone (maybe): sip:<PII:H101(ycl2PszSD3BNO576n9IlOku9h33tkvdCa5uXTrYpj4U=)>@microsoft.com
+
+
+For anonymous dialIn users the following has been done (FromUserUri):
+======================================================================
+sip:+17787892040-3957fc57e1e6405e8a0f0aa43a819801@anonymous.invalid
+
+Format: sip:[PhoneNumber]-[guid]@anonymous.invalid
+
+So, the hashed input version will not work.
+Edit: We have the phone number now in a different field.
+
+
+
+CALEA NOTES
+===========
+1. DialIn/DialOut calls cannot be differentiated at the FOCUS side.
+2. Call from web client not showing up in Cosmos.
+3. Official phone number based search can be done directly for the conference calls. However, for P2P a direct search will not work.
+
+To join a conf from web client, ad ?sl= after the conf link.
+
+Client mapping
+==============
+In ConferenceSessionDetails.view, there is a column named UserClientType whose value is INT (e.g., 4, 256, etc.). That could help to do a client mapping. (4 ==> Skype For Business)
+
+Cosmos Helper Functions
+===========================
+From Alex Yang: //depot/lcs/private/rtma/src/dev/server/lcs/oconline/BI/Cosmos/LyncScopeLib/Tools/PiiTools.cs
+
+[?11/?4/?2015 2:59 PM] Asad Babu: 
+hmm, however in the Uploader.xml, the replacement strategy is "HashAndEncrypt" for the old columns (FromUserTelNumber and ToUserTelNumber)
+are you somehow retrieving the encrypted value from the old columns and putting them into the new ones?
+because I do not see any PII setting for the newly created columns
+[?11/?4/?2015 3:00 PM] Alex Yang: 
+yes, the new columns only contains the encrypted part
+and it's from the old column
+[?11/?4/?2015 3:01 PM] Asad Babu: 
+okay. Which part of the code does the retrieval from the old columns and put into the new columns?
+[?11/?4/?2015 3:02 PM] Alex Yang: 
+PiiTools.CleanseHashValues(FromUserTelNumber) 
+[?11/?4/?2015 3:03 PM] Asad Babu: 
+I guess it's in the Uploader client code
+[?11/?4/?2015 3:03 PM] Alex Yang: 
+no
+it's a Scope helper function
+[?11/?4/?2015 3:04 PM] Asad Babu: 
+okay, and where did you define it? 
+sorry for asking these questions
+I just want a clear view
+[?11/?4/?2015 3:05 PM] Alex Yang: 
+//depot/lcs/private/rtma/src/dev/server/lcs/oconline/BI/Cosmos/LyncScopeLib/Tools/PiiTools.cs 
+
+
+
+
+Alg for phone number validation
+CloudPstnConf
+================================
+
+Validate(phoneNumber)
+{
+	// Test @ first, then AllChar
+	return !AllChar(phoneNumber) && !phonNumber.Contains("@") && IsNotGuid(phoneNumber)
+}
+
+
+Data missing in P2P INVITE (SipMessage)
+=======================================
+1. To/FromUserGateway
+2. MsDiagHeader
+3. MsDiagHeaderGeneralPII
+4. ReplacesDialogId
+5. ToUserTelNumberObfuscated
+
+These columns are missing only in type 16 (voice) messages. CER INVITE seems to have these info.
+
+
+BYE message doesn't have the Gateway info too. 
+
+MsgType 1024 16 INVITE
+1024 we need :
+
+
+For few outbound calls we only have the BYE. Didn't see the corresponding INVITE. 
+
+
+Resource Forest Message Filtering
+==================================
+function IsInResourceForest() 
+{
+    PROD_RES_FOREST_TAG = "0r";
+    EDOG_RES_FOREST_TAG = "6d";
+    isInResourceForest = false;
+    
+    // Get rid of the common domain name part of FQDN. Example: 
+    // get bl20r04fes02 from bl20r04fes02.infra.lync.com. 
+    length = IndexOfString(FQDN, ".", false);
+    if (length >= 0)
+    {
+        machineName = SubString(FQDN, 0, length);
+        if (IndexOfString(machineName, PROD_RES_FOREST_TAG, false) >= 0
+            || IndexOfString(machineName, EDOG_RES_FOREST_TAG, false) >= 0)
+        {
+            isInResourceForest = true;
+        }
+    }
+
+    Log ("Debug", false, "UdcAgent: isInResourceForest = ", isInResourceForest, " MachineFQDN = ", FQDN);
+    return isInResourceForest;
+}
+
+
+    // NOTE:
+    // Ideas for better long-term fixes:
+    //    a) Check the DefaultSipDomain of the forest (requires a new SPL built-in function).
+    //    b) Expose a IsInResourceForest equivalent as a built-in SPL function (this would be most deterministic fix).
+    //
+    // For now, a simpler strategy has been employed to figure out
+    // if the UdcAgent is running on a LyO Resource Forest. The "0r"
+    // and "6d" tag have been looked for in the Machine FQDN. If found,
+    // true has been returned and vice versa.
+    
+    PROD_RES_FOREST_TAG = "0r";
+    EDOG_RES_FOREST_TAG = "6d";
+    isInResourceForest = false;
+    
+    // Get rid of the common domain name part of FQDN. Example: 
+    // get bl20r04fes02 from bl20r04fes02.infra.lync.com. 
+    length = IndexOfString(FQDN, ".", false);
+    if (length >= 0)
+    {
+        machineName = SubString(FQDN, 0, length);
+        if (IndexOfString(machineName, PROD_RES_FOREST_TAG, false) >= 0
+            || IndexOfString(machineName, EDOG_RES_FOREST_TAG, false) >= 0)
+        {
+            isInResourceForest = true;
+        }
+    }
+
+    Log ("Debug", false, "UdcAgent: isInResourceForest = ", isInResourceForest, " MachineFQDN = ", FQDN);
+    return isInResourceForest;
+
+
+	Mediatino server INVITE indicator:
+	==================================
+	1. FromUserClientVersion = "RTCC/6.0.0.0 AV-MCU"
+	2. FromUserMediationServer = null 
+	3. ToUserClientVersion = "RTCC/6.0.0.0 MediationServer"
+	4. ToUserMediationServer = "BL20R00MED01.infra.lync.com"
+	5. MsDiagHeader contains: component="MediationServer"
+	
+	Mediation server BYE indicator:
+	===============================
+	1. FromUserClientVersion = "RTCC/6.0.0.0 MediationServer"
+	2. FromUserMediationServer = "BL20R00MED01.infra.lync.com"
+	3. ToUserClientVersion = "RTCC/6.0.0.0 AV-MCU"
+	4. ToUserMediationServer is null or empty
+	4. MsDiagHeader contains: component="MediationServer"
+	
+	THe above scenarios apply to skype to PSTN call.
+	
+
+
+
+
+
+Minute caps task of BvHealth
+============================
+1. Write a script to read the ss stream and write the data in the expected std format.
+2. Add a schedular of type "ProvisioningSchedular" with the TargetDate set to the current UTC time. Schedule to run in 4 hrs intervals. The src file is BVService.cs.
+3. Add the script key in TaskHost\App.config.
+4. _CPC__
+
+
+To launch the scheduled task:
+task://"Asm=BvDataTasks.dll;Type=BVDataTasks.Dbg.TestFdrMinuteCapsTask;StreamName=prod-cdd0-mincapfdr-15120804-15120823-8c6bcce7-3fa9-4c79-bdc1-310211d841f3.ss"
+
+To import output stream data:
+task://"Asm=BvDataTasks.dll;Type=BVDataTasks.RedoStreamTask;StreamName=prod-cdd0-mincapfdr-15120805-15120823-31d17b0c-fc6d-4be3-bcf7-4eebfab7ee69.ss"
+
+PSTN Users
+==========
+cpcuser5@acpdf.ccsctp.net  : 19842211538 -- called, being called in the duration: Jan 7 2:10 PM -- Jan 7 2: 20 PM
+cpcuser6@acpdf.ccsctp.net  : 19842211543 
+Pwd: 07Apples
+
+CPC Enabled Users
+=================
+User name 
+Test5@BWCom5D.ccsctp.net
+Password: 
+Goba7300
+
+
+User name 
+Test6@BWCom5D.ccsctp.net
+Password: 
+Puru4759
+
+
+User name 
+Test7@BWCom5D.ccsctp.net : DialIn/DialOut conf call with Animesh's cell no between Jan 7 2:40 pm to Jan 7 2:51 pm
+Password: 
+Caso0644
+
+
+User name 
+Test8@BWCom5D.ccsctp.net
+Password: 
+Zapo2003
+
+
+Animesh's no: 4258946336
+https://meet.tip.lync.com/acpdf/cpcuser5/S0JPGVH0
+
+The good second conference:
+https://meet.tip.lync.com/bwcom5d/test7/S6M032HY
+Bridge No: 19842211572
+Conference ID: 4274655
+
+MSP Group Change Request
+========================
+
+Group NUmber:
+
+To Address:
+700 De La Gauchetiere St. West - Suite 1900, Montreal (QC), H3B 0A7
+
+
+Jennifer Lo
+700 De La Gauchetiere St. West - Suite 1800, Montreal (QC), H3B 0A7
+
+
+
+Call with DialogId 4f059c7009474c37bfcf9d3259badea4;c3135bf519;35c207d2ae : 
+===========================================================================
+cpcuser5@acpdf.ccsctp.net (+19842211538) called Animesh's cell no +14258946336. Call was successful.
+
+Call with DialogId 08e034b6-db6d-4cbf-a6ed-e28e4accf78e;aa5329c48b;135cced684: 
+==============================================================================
+Animesh (+14258946336) called cpcuser5@acpdf.ccsctp.net (+19842211538). Call was successful.
+
+
+
+
+Not right:
+==========
+DialIn
+----------
+06000541-7c75-4328-98ac-22e71852a12c;ad5391b76f;fb5f105eb : anonymous
+a0060ca1-68cf-40ae-a84a-04d9dee87f7b;a029da7fbe;d99ae8126c: anonymous
+
+DialOut
+----------
+Dialout calls are all good.
+
+
+
+BW CDR/Inventory data Vs MS CDR Comparsion
+==========================================
+Algorithm for key generation:
+1. Take the to and from phone numbers.
+2. Squash the start and end call time by a thresholding function that ignore 5 minutes +/- difference.
+3. Fed 1 and 2 to a hash generating function. That will be the key.
+
+
+Azure Emulator Logs
+===================
+C:\Users\asbabu\AppData\Local\dftmp\EmulatorRuntimeLogs
+
+b3 b1 34 e6 c3 1e 93 d4 73 45 9f c1 b1 53 9d 7f bc f5 46 96
+
+
+Fraud blocking page:
+=====================
+https://localhost:446/admin/block
+
+Cosmos Prod/PstnPartnerReconciliation/
+======================================
+https://cosmos11.osdinfra.net/cosmos/lynconline.adhoc/shares/lynconline.prod/local/DataModels/Prod/PstnPartnerReconciliation/ on CY2SCH040130248.
+
+
+Fraud Unblock:
+===============
+In Edog, you can use "88641" to reproduce both issues
+it fails to unblock (which it shouldn't), and it doesn't show an error message stating it couldn't do it (which it obviously should)
+https://devcus01fui.cloudapp.net/Admin/Unblock 
+if you do the "look up", that works as expected
+when you hit Unblock, it exhibits those bugs
+
+Creating Default IIS Website again
+===================================
+This was complete process to restore Default Web Site in my case (IIS 7 on Windows 7 64bit):
+1.open IIS Manager
+2.right click Sites node under your machine in the Connections tree on the left side and click Add Website
+3.enter "Default Web Site" as a Site name
+4.set Application pool back to DefaultAppPool!
+5.set Physical path to %SystemDrive%\inetpub\wwwroot
+6.leave Binding and everything else as is
+
+0R data by data center:
+=======================
+TODO:
+1. Create a new model object for DataCenter;
+2. Update Pool to have a DataCenterId
+3. Update Forest if needed.
+4. Write Data Access code to fetch all data centers.
+5. Adde "DataCenters" list property to different report objects.
+
+OR data by DC -- Resource Fores Top Errors
+=============================================
+[?3/?24/?2016 2:13 PM] Vasil Kolev: 
+hi Asad
+[?3/?24/?2016 2:14 PM] Asad Babu: 
+In the 'Top Errors' page under 'Resource Forest', no topology filter has been enabled
+[?3/?24/?2016 2:15 PM] Vasil Kolev: 
+yeah, we (Balinder :)) want to add it
+it should show resource forest things, similar to Dial-in latency report
+[?3/?24/?2016 2:16 PM] Vasil Kolev: 
+https://bvhealth.trafficmanager.net/CpcReport/Latency?i=1&fd=20160303&td=20160324&region=Resource_emea&forest=Resource_emea!Forest0R&report=latencyin
+see how it only has 0R and regions and pools from 0R
+[?3/?24/?2016 2:17 PM] Asad Babu: 
+APAC, EMEA, NOAM -- all these regions belong to 0R?
+[?3/?24/?2016 2:17 PM] Vasil Kolev: 
+problem is - you don't have resource pool in the data
+regions don't belong to forests, forests belong to regions
+[?3/?24/?2016 2:18 PM] Asad Babu: 
+okay, the forest is Forest0R
+[?3/?24/?2016 2:18 PM] Vasil Kolev: 
+all those regions have 0r forest
+[?3/?24/?2016 2:18 PM] Asad Babu: 
+yes, got it
+[?3/?24/?2016 2:20 PM] Vasil Kolev: 
+so - you need to update resource forest error script to dump 0R pool name of the CaptureMachineFqdn into the result. Use D3 though. I'd like to keep D2 for user pool 
+e,g, join capturemachinefqdn with machines.view and get poolfqdn from there
+[?3/?24/?2016 2:22 PM] Vasil Kolev: 
+once you have data with pool, you can do the magic with filtering region, forest, DC and pool
+[?3/?24/?2016 2:22 PM] Asad Babu: 
+okay
+[?3/?24/?2016 2:23 PM] Vasil Kolev: 
+if you have time and desire you can do the same with mediation server entitlement errors
+.. this time -> put the pool of the mediation server in D3
+[?3/?24/?2016 2:24 PM] Asad Babu: 
+sure, first I will do it for the Top Errors
+[?3/?24/?2016 2:24 PM] Vasil Kolev: 
+yep
+[?3/?24/?2016 2:25 PM] Asad Babu: 
+thanks, I will email/ping you if I have further questions
+
+
+BVHealth Remote Machine
+========================
+Computer: bvihealth
+u:redmond\BVHSVC
+p:W$L1LuEbK3VJcN,m
+Cert name (under C:\bvh\certificates): 
+the longest one. external. sth
+diretory: C:\bvihealth\service
+
+Steps:
+Rebuild the TasksHost project first.
+1. Create a cmd script sync_ab (like sync_kt or sync_vk) containing: robocopy -s \\MY_COMPUTER_NAME\Release\ .
+2. Execute by: type sync_ab 
+3. Stop TasksHost by Ctrl + C#
+4. Insall cert: C:\bvh\certificates\external.bvhealth.cloudapp.net under local machine.
+5. Run TasksHost again:  TasksHost.exe task://"Asm=BVDataTasks;Type=BVDataTasks.BVService"
+
+
+Recent Emergency Provider ST changes
+======================================
+<name>_<partner>_<country> in ST instance name.
+
+[?4/?11/?2016 12:08 PM] Sachin Goel: 
+also i am using onbehalf logging
+so logs should be in SkypeLisE2E<logstable>
+SkypeLisE2ERunnerServiceRunnerEventTable
+
+
+Using MDS SDK for the query instead of EXE 
+============================================
+[?4/?11/?2016 4:56 PM] Vasil Kolev: 
+https://jarvis-west.dc.ad.msft.net/?page=documents&section=9c95f4eb-8689-4c9f-81bf-82d688e860fd&id=2d1dfa8a-4ae4-40b7-861d-35dc80dbacd9#/
+[?4/?11/?2016 5:01 PM] Vasil Kolev: 
+\\reddog\Builds\branches\git_engsys_mda_mds_rel_ma33\33.2.8.0\retail-amd64\Mds
+
+The file needs to be changed: DataImport\MdsHelper.cs
+
+Transfer WorkerRole logs to Azure Table
+========================================
+Look at the example inside: F:\MyZone\CentralAdminLogging
+
+
+
+
+
+
